@@ -18,7 +18,6 @@ def _ensure_spacy_english():
         spacy.load('en_core_web_sm')
 
 
-_ensure_spacy_english()
 
 import hashlib
 
