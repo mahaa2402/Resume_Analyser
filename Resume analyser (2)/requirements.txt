@@ -1,6 +1,6 @@
-pdfminer3
-pyresparser
-streamlit
+# Prefer repo-root `requirements.txt` + `App.py` for Streamlit Cloud (paths without spaces/parens).
+# This file kept for local runs from this folder only.
+streamlit>=1.28
 pandas
 plotly
 pymysql
@@ -9,4 +9,5 @@ Pillow
 yt-dlp
 nltk
 pdfminer3
-spacy==2.3.5
+pyresparser
+spacy>=3.5.0,<4.0.0

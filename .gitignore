@@ -59,7 +59,8 @@ hypothesis/
 nltk_data/
 
 # --- Uploaded user files (PII — keep out of git) ---
-# Ignore contents but keep folder via .gitkeep
+Uploaded_Resumes/*
+!Uploaded_Resumes/.gitkeep
 Resume analyser (2)/Uploaded_Resumes/*
 !Resume analyser (2)/Uploaded_Resumes/.gitkeep
 

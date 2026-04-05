@@ -1,0 +1,12 @@
+# Root requirements for Streamlit Community Cloud (run from repo root; no spaces/parens in path).
+streamlit>=1.28
+pandas
+plotly
+pymysql
+streamlit-tags
+Pillow
+yt-dlp
+nltk
+pdfminer3
+pyresparser
+spacy>=3.5.0,<4.0.0
