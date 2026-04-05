@@ -1,4 +1,5 @@
 import os
+import re
 
 import spacy
 
@@ -8,35 +9,6 @@ try:
     _NLP = en_core_web_sm.load()
 except Exception:
     _NLP = spacy.load("en_core_web_sm")
-
-_orig_spacy_load = spacy.load
-_orig_util_load_model = spacy.util.load_model
-
-
-def _use_bundled_nlp(name) -> bool:
-    if name == "en_core_web_sm":
-        return True
-    if isinstance(name, (str, os.PathLike)):
-        path = os.path.normpath(os.path.abspath(str(name)))
-        if os.path.isdir(path) and "pyresparser" in path.replace("\\", "/").lower():
-            return True
-    return False
-
-
-def _patched_spacy_load(name, *args, **kwargs):
-    if _use_bundled_nlp(name):
-        return _NLP
-    return _orig_spacy_load(name, *args, **kwargs)
-
-
-def _patched_util_load_model(name, *args, **kwargs):
-    if _use_bundled_nlp(name):
-        return _NLP
-    return _orig_util_load_model(name, *args, **kwargs)
-
-
-spacy.load = _patched_spacy_load
-spacy.util.load_model = _patched_util_load_model
 
 import streamlit as st
 import nltk
@@ -50,8 +22,7 @@ import hashlib
 import pandas as pd
 import base64, random
 import time, datetime
-from pyresparser import ResumeParser
-from pdfminer3.layout import LAParams, LTTextBox
+from pdfminer3.layout import LAParams
 from pdfminer3.pdfpage import PDFPage
 from pdfminer3.pdfinterp import PDFResourceManager
 from pdfminer3.pdfinterp import PDFPageInterpreter
@@ -111,6 +82,90 @@ def pdf_reader(file):
     converter.close()
     fake_file_handle.close()
     return text
+
+
+def _count_pdf_pages(file_path: str) -> int:
+    with open(file_path, "rb") as fh:
+        return sum(1 for _ in PDFPage.get_pages(fh, caching=True, check_extractable=True))
+
+
+_SKILL_PATTERNS = (
+    (re.compile(r"\bJavaScript\b", re.I), "JavaScript"),
+    (re.compile(r"\bJava\b(?!\s*Script)", re.I), "Java"),
+    (re.compile(r"\bPython\b", re.I), "Python"),
+    (re.compile(r"C\+\+", re.I), "C++"),
+    (re.compile(r"\bMachine Learning\b", re.I), "Machine Learning"),
+    (re.compile(r"\bSQL\b", re.I), "SQL"),
+    (re.compile(r"\bHTML\b", re.I), "HTML"),
+    (re.compile(r"\bCSS\b", re.I), "CSS"),
+    (re.compile(r"\bReact\b", re.I), "React"),
+    (re.compile(r"\bMongoDB\b", re.I), "MongoDB"),
+)
+
+
+def extract_resume_data(file_path: str, pdf_text: str | None = None) -> dict:
+    """Extract name (spaCy PERSON), email/phone (regex), skills (keyword regex), page count (pdfminer).
+
+    Pass pdf_text if you already called pdf_reader() to avoid reading the PDF twice.
+    """
+    text = pdf_text if pdf_text is not None else pdf_reader(file_path)
+    if not text or not str(text).strip():
+        return {"name": None, "email": None, "phone": None, "skills": [], "no_of_pages": 0}
+
+    try:
+        no_of_pages = max(1, _count_pdf_pages(file_path))
+    except Exception:
+        no_of_pages = 1
+
+    header = text[:4000]
+    doc = _NLP(header)
+    name = None
+    for ent in doc.ents:
+        if ent.label_ == "PERSON":
+            cand = ent.text.strip()
+            if 1 <= len(cand.split()) <= 6 and len(cand) < 80:
+                name = cand
+                break
+    if not name:
+        doc2 = _NLP(text[:12000])
+        for ent in doc2.ents:
+            if ent.label_ == "PERSON":
+                cand = ent.text.strip()
+                if 1 <= len(cand.split()) <= 6 and len(cand) < 80:
+                    name = cand
+                    break
+
+    email = None
+    em = re.search(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", text)
+    if em:
+        email = em.group(0)
+
+    phone = None
+    for pat in (
+        r"\+?\d{1,3}[\s.-]?\(?\d{2,4}\)?[\s.-]?\d{2,6}[\s.-]?\d{2,6}[\s.-]?\d{0,6}",
+        r"\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}",
+    ):
+        pm = re.search(pat, text)
+        if pm:
+            phone = re.sub(r"\s+", " ", pm.group(0).strip())
+            if len(re.sub(r"\D", "", phone)) >= 10:
+                break
+            phone = None
+
+    skills = []
+    seen = set()
+    for rx, label in _SKILL_PATTERNS:
+        if rx.search(text) and label not in seen:
+            skills.append(label)
+            seen.add(label)
+
+    return {
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "skills": skills,
+        "no_of_pages": no_of_pages,
+    }
 
 
 def show_pdf(file_path):
@@ -452,20 +507,27 @@ def run():
                 f.write(pdf_file.getbuffer())
             with st.expander("Document preview", expanded=True):
                 show_pdf(save_image_path)
-            resume_data = ResumeParser(save_image_path).get_extracted_data()
-            if resume_data:
-                ## Get the whole resume data
-                resume_text = pdf_reader(save_image_path)
+            resume_text = pdf_reader(save_image_path)
+            parsed = extract_resume_data(save_image_path, pdf_text=resume_text)
+            if resume_text and resume_text.strip():
+                resume_data = {
+                    'name': parsed.get('name') or 'Candidate',
+                    'email': parsed.get('email') or '',
+                    'mobile_number': parsed.get('phone') or '',
+                    'skills': parsed.get('skills') or [],
+                    'no_of_pages': int(parsed.get('no_of_pages') or 1),
+                }
 
                 st.header("**Resume Analysis**")
-                st.success("Hello " + resume_data['name'])
+                st.success("Hello " + str(resume_data['name']))
                 st.subheader("**Your Basic info**")
                 try:
-                    st.text('Name: ' + resume_data['name'])
-                    st.text('Email: ' + resume_data['email'])
-                    st.text('Contact: ' + resume_data['mobile_number'])
+                    st.text('Name: ' + str(resume_data['name']))
+                    st.text('Email: ' + str(resume_data['email']))
+                    st.text('Phone: ' + str(resume_data['mobile_number'] or '—'))
                     st.text('Resume pages: ' + str(resume_data['no_of_pages']))
-                except:
+                    st.text('Skills detected: ' + (', '.join(resume_data['skills']) or '—'))
+                except Exception:
                     pass
                 cand_level = ''
                 if resume_data['no_of_pages'] == 1:
@@ -716,7 +778,7 @@ def run():
                 if connection is not None:
                     connection.commit()
             else:
-                st.error('Something went wrong..')
+                st.error('Could not extract text from this PDF. Try a text-based PDF export.')
     else:
         ## Admin Side
         st.subheader("Administrator")
