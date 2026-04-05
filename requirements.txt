@@ -1,5 +1,5 @@
-# Pin spaCy + en_core_web_sm to the SAME train release (see https://github.com/explosion/spacy-models).
-# Loose spacy>=3.5 + old model wheel breaks load() with E050 on Streamlit Cloud.
+# Match spaCy train version to the en_core_web_sm wheel.
+# Streamlit Cloud: use Python 3.12 in Advanced settings (3.14 breaks many wheels).
 streamlit>=1.28
 pandas
 plotly
@@ -10,5 +10,5 @@ yt-dlp
 nltk
 pdfminer3
 pyresparser
-spacy==3.7.2
-https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
+spacy==3.8.2
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl

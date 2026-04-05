@@ -1,41 +1,45 @@
-import subprocess
-import sys
-
 import streamlit as st
 import nltk
 import spacy
 
 
-from spacy.cli import download
-
-# Ensure model is available
-try:
-    nlp = spacy.load("en_core_web_sm")
-except OSError:
-    download("en_core_web_sm")
-    nlp = spacy.load("en_core_web_sm")
-
-nltk.download('stopwords')
-
-
-def _ensure_spacy_english():
+def _bootstrap_en_core_web_sm() -> None:
+    """Load en_core_web_sm once, then patch spacy so pyresparser always gets the same pipeline."""
     try:
-        spacy.load('en_core_web_sm')
-    except OSError:
-        try:
-            subprocess.check_call(
-                [sys.executable, '-m', 'spacy', 'download', 'en_core_web_sm'],
-                timeout=300,
-            )
-            spacy.load('en_core_web_sm')
-        except Exception:
-            raise OSError(
-                "spaCy model 'en_core_web_sm' is not installed. "
-                "It must be listed in requirements.txt for Streamlit Cloud."
-            ) from None
+        import en_core_web_sm
+
+        nlp = en_core_web_sm.load()
+    except Exception:
+        nlp = spacy.load("en_core_web_sm")
+
+    orig_load = spacy.load
+    orig_util_load = spacy.util.load_model
+
+    def load_patched(name, *args, **kwargs):
+        if name == "en_core_web_sm":
+            return nlp
+        return orig_load(name, *args, **kwargs)
+
+    def util_load_patched(name, *args, **kwargs):
+        if name == "en_core_web_sm":
+            return nlp
+        return orig_util_load(name, *args, **kwargs)
+
+    spacy.load = load_patched
+    spacy.util.load_model = util_load_patched
 
 
-_ensure_spacy_english()
+try:
+    _bootstrap_en_core_web_sm()
+except OSError as err:
+    raise OSError(
+        "Could not load spaCy model 'en_core_web_sm'. "
+        "On Streamlit Community Cloud: open Manage app → Settings → Advanced settings → "
+        "set Python to 3.12 (not 3.14), save, then reboot the app. "
+        "Python 3.14 often cannot install compatible spaCy/model wheels."
+    ) from err
+
+nltk.download("stopwords")
 
 import hashlib
 
