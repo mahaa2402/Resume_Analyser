@@ -7,5 +7,7 @@ Pillow
 yt-dlp
 nltk
 pdfminer3
-spacy
+# spaCy 3.7 + thinc need NumPy 1.x; NumPy 2.x breaks thinc.backends.numpy_ops on Streamlit Cloud
+numpy>=1.26.4,<2.0.0
+spacy==3.7.4
 https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
