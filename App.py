@@ -5,6 +5,16 @@ import streamlit as st
 import nltk
 import spacy
 
+
+from spacy.cli import download
+
+# Ensure model is available
+try:
+    nlp = spacy.load("en_core_web_sm")
+except OSError:
+    download("en_core_web_sm")
+    nlp = spacy.load("en_core_web_sm")
+
 nltk.download('stopwords')
 
 
