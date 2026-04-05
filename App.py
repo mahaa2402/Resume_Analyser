@@ -1,45 +1,49 @@
-import streamlit as st
-import nltk
+import os
+
 import spacy
 
-
-def _bootstrap_en_core_web_sm() -> None:
-    """Load en_core_web_sm once, then patch spacy so pyresparser always gets the same pipeline."""
-    try:
-        import en_core_web_sm
-
-        nlp = en_core_web_sm.load()
-    except Exception:
-        nlp = spacy.load("en_core_web_sm")
-
-    orig_load = spacy.load
-    orig_util_load = spacy.util.load_model
-
-    def load_patched(name, *args, **kwargs):
-        if name == "en_core_web_sm":
-            return nlp
-        return orig_load(name, *args, **kwargs)
-
-    def util_load_patched(name, *args, **kwargs):
-        if name == "en_core_web_sm":
-            return nlp
-        return orig_util_load(name, *args, **kwargs)
-
-    spacy.load = load_patched
-    spacy.util.load_model = util_load_patched
-
-
 try:
-    _bootstrap_en_core_web_sm()
-except OSError as err:
-    raise OSError(
-        "Could not load spaCy model 'en_core_web_sm'. "
-        "On Streamlit Community Cloud: open Manage app → Settings → Advanced settings → "
-        "set Python to 3.12 (not 3.14), save, then reboot the app. "
-        "Python 3.14 often cannot install compatible spaCy/model wheels."
-    ) from err
+    import en_core_web_sm
+
+    _NLP = en_core_web_sm.load()
+except Exception:
+    _NLP = spacy.load("en_core_web_sm")
+
+_orig_spacy_load = spacy.load
+_orig_util_load_model = spacy.util.load_model
+
+
+def _use_bundled_nlp(name) -> bool:
+    if name == "en_core_web_sm":
+        return True
+    if isinstance(name, (str, os.PathLike)):
+        path = os.path.normpath(os.path.abspath(str(name)))
+        if os.path.isdir(path) and "pyresparser" in path.replace("\\", "/").lower():
+            return True
+    return False
+
+
+def _patched_spacy_load(name, *args, **kwargs):
+    if _use_bundled_nlp(name):
+        return _NLP
+    return _orig_spacy_load(name, *args, **kwargs)
+
+
+def _patched_util_load_model(name, *args, **kwargs):
+    if _use_bundled_nlp(name):
+        return _NLP
+    return _orig_util_load_model(name, *args, **kwargs)
+
+
+spacy.load = _patched_spacy_load
+spacy.util.load_model = _patched_util_load_model
+
+import streamlit as st
+import nltk
 
 nltk.download("stopwords")
+nltk.download("punkt")
+nltk.download("averaged_perceptron_tagger")
 
 import hashlib
 
