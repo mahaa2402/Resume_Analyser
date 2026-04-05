@@ -12,12 +12,20 @@ def _ensure_spacy_english():
     try:
         spacy.load('en_core_web_sm')
     except OSError:
-        subprocess.check_call(
-            [sys.executable, '-m', 'spacy', 'download', 'en_core_web_sm']
-        )
-        spacy.load('en_core_web_sm')
+        try:
+            subprocess.check_call(
+                [sys.executable, '-m', 'spacy', 'download', 'en_core_web_sm'],
+                timeout=300,
+            )
+            spacy.load('en_core_web_sm')
+        except Exception:
+            raise OSError(
+                "spaCy model 'en_core_web_sm' is not installed. "
+                "It must be listed in requirements.txt for Streamlit Cloud."
+            ) from None
 
 
+_ensure_spacy_english()
 
 import hashlib
 

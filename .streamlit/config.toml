@@ -1,0 +1,5 @@
+# Streamlit Community Cloud: set Python 3.12 in the deploy "Advanced settings" UI.
+# Python 3.14 often lacks wheels for spaCy/thinc and will fail at install or runtime.
+
+[server]
+headless = true
