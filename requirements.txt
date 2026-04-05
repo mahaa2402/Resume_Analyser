@@ -1,5 +1,4 @@
-# Pin spaCy to the same train as the en_core_web_sm wheel.
-streamlit>=1.28
+streamlit==1.33.0
 pandas
 plotly
 pymysql
@@ -8,7 +7,8 @@ Pillow
 yt-dlp
 nltk
 pdfminer3
-pyresparser
-numpy==1.26.4
-spacy==3.7.2
-https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
+pyresparser==1.0.6
+
+numpy==1.23.5
+spacy==2.3.9
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-2.3.1/en_core_web_sm-2.3.1.tar.gz
