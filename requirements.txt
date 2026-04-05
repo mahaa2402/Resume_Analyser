@@ -1,6 +1,6 @@
 streamlit==1.33.0
-pandas
-plotly
+pandas==1.5.3
+plotly==5.18.0
 pymysql
 streamlit-tags
 Pillow
@@ -9,6 +9,6 @@ nltk
 pdfminer3
 pyresparser==1.0.6
 
-numpy==1.23.5
+numpy==1.21.6
 spacy==2.3.9
 https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-2.3.1/en_core_web_sm-2.3.1.tar.gz
